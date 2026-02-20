@@ -21,4 +21,11 @@ router.get(
   controller.getMembers
 );
 
+router.get(
+  "/dashboard",
+  auth, 
+  tenant, 
+  controller.getDashboardStats
+);
+
 module.exports = router;

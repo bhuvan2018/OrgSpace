@@ -76,4 +76,35 @@ const getMembers = async (req, res) => {
   }
 };
 
+const getDashboardStats = async (req, res) => {
+  try {
+    const cacheKey = `dashboard:${req.orgId}`;
+
+    if (redis) {
+      const cached = await redis.get(cacheKey);
+      if (cached) return res.json(JSON.parse(cached));
+    }
+
+    const totalMembers = await Membership.countDocuments({ orgId: req.orgId });
+    const admins = await Membership.countDocuments({
+      orgId: req.orgId,
+      role: "admin",
+    });
+
+    const response = {
+      orgId: req.orgId,
+      totalMembers,
+      admins,
+    };
+
+    if (redis) {
+      await redis.set(cacheKey, JSON.stringify(response), "EX", 60);
+    }
+
+    res.json(response);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
 module.exports = { inviteUser, getMembers };
