@@ -1,3 +1,4 @@
+const redis = require("../../config/redis");
 const User = require("../user/user.model");
 const Membership = require("../membership/membership.model");
 
@@ -25,6 +26,11 @@ const inviteUser = async (req, res) => {
       role: role || "member",
     });
 
+    if (redis) {
+        const keys = await redis.keys(`members:${req.orgId}:*`);
+        if (keys.length) await redis.del(keys);
+    }
+
     res.json({ message: "User invited successfully", membership });
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -37,6 +43,15 @@ const getMembers = async (req, res) => {
     const limit = parseInt(req.query.limit) || 5;
     const skip = (page - 1) * limit;
 
+    const cacheKey = `members:${req.orgId}:page:${page}:limit:${limit}`;
+
+    if (redis) {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        return res.json(JSON.parse(cached));
+      }
+    }
+
     const members = await Membership.find({ orgId: req.orgId })
       .populate("userId", "name email")
       .skip(skip)
@@ -44,12 +59,18 @@ const getMembers = async (req, res) => {
 
     const total = await Membership.countDocuments({ orgId: req.orgId });
 
-    res.json({
+    const response = {
       page,
       totalPages: Math.ceil(total / limit),
       totalMembers: total,
       members,
-    });
+    };
+
+    if (redis) {
+      await redis.set(cacheKey, JSON.stringify(response), "EX", 60);
+    }
+
+    res.json(response);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
