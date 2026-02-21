@@ -42,6 +42,9 @@ const login = async ({ email, password }) => {
 
   const match = await bcrypt.compare(password, user.password);
   if (!match) throw new Error("Invalid credentials");
+  
+  const membership = await Membership.findOne({ userId: user._id });
+  if (!membership) throw new Error("User has no organization");
 
   const token = jwt.sign(
     { userId: user._id },
@@ -49,7 +52,11 @@ const login = async ({ email, password }) => {
     { expiresIn: "1d" }
   );
 
-  return { user, token };
+  return {
+    user,
+    token,
+    orgId: membership.orgId,
+  };
 };
 
 module.exports = { signup, login };
