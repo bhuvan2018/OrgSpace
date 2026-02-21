@@ -107,4 +107,4 @@ const getDashboardStats = async (req, res) => {
   }
 };
 
-module.exports = { inviteUser, getMembers };
+module.exports = { inviteUser, getMembers, getDashboardStats };
